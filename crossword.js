@@ -14,6 +14,7 @@ class CrosswordPuzzle {
     this.activeCellIndex = null;
     this.userInput = []; // User-entered letters
     this.keyboardListenerAdded = false;
+    this.mobileInput = null; // Hidden input for mobile keyboard
   }
 
   parseDate(dateStr) {
@@ -431,8 +432,13 @@ class CrosswordPuzzle {
         if (cellEl) {
           if (idx === this.activeCellIndex) {
             cellEl.classList.add('crossword-cell--selected');
-            if (cellEl.tabIndex >= 0) {
-              cellEl.focus();
+            // Focus mobile input to trigger keyboard on mobile
+            if (this.mobileInput) {
+              // Small delay to ensure DOM is ready
+              setTimeout(() => {
+                this.mobileInput.focus();
+                this.mobileInput.click(); // Additional trigger for some mobile browsers
+              }, 10);
             }
           } else {
             cellEl.classList.add('crossword-cell--highlighted');
@@ -613,10 +619,12 @@ class CrosswordPuzzle {
     // Add keyboard listener (only once)
     if (!this.keyboardListenerAdded) {
       document.addEventListener('keydown', (e) => {
+        // Don't interfere with form inputs or the mobile input
         if (document.activeElement.tagName === 'INPUT' || 
             document.activeElement.tagName === 'TEXTAREA' ||
-            document.activeElement.tagName === 'SELECT') {
-          return; // Don't interfere with form inputs
+            document.activeElement.tagName === 'SELECT' ||
+            document.activeElement === this.mobileInput) {
+          return;
         }
         this.handleKeyPress(e.key);
       });
@@ -666,6 +674,43 @@ class CrosswordPuzzle {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const puzzle = new CrosswordPuzzle();
+  // Create mobile input immediately
+  puzzle.mobileInput = document.createElement('input');
+  puzzle.mobileInput.type = 'text';
+  puzzle.mobileInput.className = 'crossword-mobile-input';
+  puzzle.mobileInput.setAttribute('aria-hidden', 'true');
+  puzzle.mobileInput.setAttribute('tabindex', '-1');
+  puzzle.mobileInput.style.position = 'absolute';
+  puzzle.mobileInput.style.opacity = '0';
+  puzzle.mobileInput.style.width = '1px';
+  puzzle.mobileInput.style.height = '1px';
+  puzzle.mobileInput.style.pointerEvents = 'none';
+  puzzle.mobileInput.style.left = '-9999px';
+  puzzle.mobileInput.maxLength = 1;
+  puzzle.mobileInput.inputMode = 'text';
+  puzzle.mobileInput.autocomplete = 'off';
+  puzzle.mobileInput.autocorrect = 'off';
+  puzzle.mobileInput.autocapitalize = 'off';
+  puzzle.mobileInput.spellcheck = false;
+  
+  // Handle input events
+  puzzle.mobileInput.addEventListener('input', (e) => {
+    const value = e.target.value.toUpperCase();
+    if (value && /[A-Z]/.test(value)) {
+      puzzle.handleKeyPress(value);
+      e.target.value = ''; // Clear input after handling
+    }
+  });
+  
+  // Handle keydown for backspace
+  puzzle.mobileInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      puzzle.handleKeyPress(e.key);
+    }
+  });
+  
+  document.body.appendChild(puzzle.mobileInput);
   puzzle.loadPuzzle();
 });
 
