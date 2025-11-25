@@ -434,11 +434,8 @@ class CrosswordPuzzle {
             cellEl.classList.add('crossword-cell--selected');
             // Focus mobile input to trigger keyboard on mobile
             if (this.mobileInput) {
-              // Small delay to ensure DOM is ready
-              setTimeout(() => {
-                this.mobileInput.focus();
-                this.mobileInput.click(); // Additional trigger for some mobile browsers
-              }, 10);
+              this.mobileInput.focus();
+              this.mobileInput.click(); // Additional trigger for some mobile browsers
             }
           } else {
             cellEl.classList.add('crossword-cell--highlighted');
