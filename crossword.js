@@ -434,8 +434,17 @@ class CrosswordPuzzle {
             cellEl.classList.add('crossword-cell--selected');
             // Focus mobile input to trigger keyboard on mobile
             if (this.mobileInput) {
+              // Store scroll position before focusing
+              const scrollY = window.scrollY;
+              const scrollX = window.scrollX;
+              
+              // Focus the input
               this.mobileInput.focus();
-              this.mobileInput.click(); // Additional trigger for some mobile browsers
+              
+              // Immediately restore scroll position to prevent jumping
+              requestAnimationFrame(() => {
+                window.scrollTo(scrollX, scrollY);
+              });
             }
           } else {
             cellEl.classList.add('crossword-cell--highlighted');
@@ -677,12 +686,14 @@ document.addEventListener('DOMContentLoaded', () => {
   puzzle.mobileInput.className = 'crossword-mobile-input';
   puzzle.mobileInput.setAttribute('aria-hidden', 'true');
   puzzle.mobileInput.setAttribute('tabindex', '-1');
-  puzzle.mobileInput.style.position = 'absolute';
+  puzzle.mobileInput.style.position = 'fixed';
   puzzle.mobileInput.style.opacity = '0';
   puzzle.mobileInput.style.width = '1px';
   puzzle.mobileInput.style.height = '1px';
   puzzle.mobileInput.style.pointerEvents = 'none';
-  puzzle.mobileInput.style.left = '-9999px';
+  puzzle.mobileInput.style.top = '0';
+  puzzle.mobileInput.style.left = '0';
+  puzzle.mobileInput.style.zIndex = '-1';
   puzzle.mobileInput.maxLength = 1;
   puzzle.mobileInput.inputMode = 'text';
   puzzle.mobileInput.autocomplete = 'off';
@@ -705,6 +716,17 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       puzzle.handleKeyPress(e.key);
     }
+  });
+  
+  // Prevent scrolling when input is focused
+  puzzle.mobileInput.addEventListener('focus', (e) => {
+    // Store current scroll position
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+    // Prevent scroll by restoring position
+    requestAnimationFrame(() => {
+      window.scrollTo(scrollX, scrollY);
+    });
   });
   
   document.body.appendChild(puzzle.mobileInput);
