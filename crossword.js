@@ -431,6 +431,9 @@ class CrosswordPuzzle {
         if (cellEl) {
           if (idx === this.activeCellIndex) {
             cellEl.classList.add('crossword-cell--selected');
+            if (cellEl.tabIndex >= 0) {
+              cellEl.focus();
+            }
           } else {
             cellEl.classList.add('crossword-cell--highlighted');
           }
