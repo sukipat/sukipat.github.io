@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crosswords — sukr.it</title>
+  <link rel="icon" type="image/jpeg" href="assets/icon.jpg" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="crossword.css" />
+</head>
+
+<body>
+  <main class="container">
+    <header class="intro">
+      <div class="intro-left">
+        <p class="eyebrow">Welcome to</p>
+        <h1 class="name">Crosswords!</h1>
+        <p class="subtitle">trying to make my own crossword puzzles, this one is from <span id="crossword-date-display"</p>
+        <p class="links">
+          <a href="index.html">back to home</a>
+        </p>
+      </div>
+      <figure class="hero"><img src="assets/hero.jpg" style="display: none;" /></figure>
+    </header>
+    <section class="work-grid crossword">
+
+      <div class="crossword-controls">
+        <!-- Date selector will be populated by JavaScript -->
+      </div>
+
+      <div class="crossword-wrapper">
+        <div class="crossword-grid" role="grid" aria-label="5 by 5 crossword grid">
+          <!-- Grid will be populated by JavaScript -->
+        </div>
+
+        <div class="crossword-clues">
+          <!-- Clues will be populated by JavaScript -->
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="crossword.js"></script>
+</body>
+</html>
+

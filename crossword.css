@@ -1,0 +1,154 @@
+/* --- CROSSWORD --- */
+.crossword{
+  margin-top:64px;
+}
+.crossword-date{
+  color:var(--muted);
+  margin-top:8px;
+}
+.crossword-controls{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin-top:24px;
+}
+.crossword-date-select{
+  padding:8px 12px;
+  border:2px solid var(--text);
+  border-radius:8px;
+  background:#ffffff;
+  color:var(--text);
+  font-family:inherit;
+  font-size:0.95rem;
+  font-weight:500;
+  cursor:pointer;
+  transition:background 0.2s ease, color 0.2s ease;
+}
+.crossword-date-select:hover{
+  background:var(--light);
+}
+.crossword-date-select:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(241, 147, 126, 0.2);
+}
+.crossword-wrapper{
+  display:flex;
+  gap:48px;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  margin-top:32px;
+}
+.crossword-grid{
+  display:grid;
+  gap:6px;
+  /* Grid size will be set dynamically via JavaScript */
+}
+.crossword-cell{
+  width:3.2rem;
+  height:3.2rem;
+  background:#ffffff;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+  color:var(--text);
+  position:relative;
+  box-shadow:0 4px 15px rgba(0,0,0,0.1);
+  cursor:pointer;
+  transition:background 0.2s ease, box-shadow 0.2s ease;
+}
+.crossword-cell:hover:not(.crossword-cell--block):not(.crossword-cell--selected):not(.crossword-cell--highlighted){
+  background:var(--light);
+}
+.crossword-cell--highlighted:hover:not(.crossword-cell--block):not(.crossword-cell--selected){
+  background:#FFF0EB;
+}
+.crossword-cell--block{
+  background:#2f2f2f;
+  box-shadow:none;
+  cursor:default;
+}
+.crossword-cell--selected{
+  background:#F1937E;
+  color:#ffffff;
+  box-shadow:0 4px 20px rgba(241, 147, 126, 0.4);
+}
+.crossword-cell--highlighted{
+  background:#FFF0EB;
+  box-shadow:0 4px 18px rgba(241, 147, 126, 0.3);
+}
+.crossword-cell__index{
+  position:absolute;
+  top:4px;
+  left:4px;
+  font-size:0.55rem;
+  color:var(--muted);
+  text-transform:uppercase;
+  font-weight:600;
+}
+.crossword-cell--selected .crossword-cell__index{
+  color:#ffffff;
+}
+.crossword-cell__letter{
+  font-size:1.3rem;
+  text-transform:uppercase;
+}
+.crossword-clues{
+  display:flex;
+  gap:32px;
+  flex:1;
+  min-width:260px;
+  flex-wrap:wrap;
+}
+.crossword-clue-group{
+  min-width:220px;
+}
+.crossword-clue-group h3{
+  margin-bottom:8px;
+  font-size:1.1rem;
+  color:var(--text);
+}
+.crossword-clue-list{
+  list-style-position:inside;
+  color:var(--muted);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:0.95rem;
+}
+.crossword-clue-list li{
+  padding-left:4px;
+  transition:color 0.2s ease;
+}
+.crossword-clue-list li.crossword-clue--highlighted{
+  color:#6B6B6B;
+  font-weight:700;
+}
+
+@media (max-width:768px){
+  .crossword-wrapper{
+    flex-direction:column;
+  }
+  .crossword-grid{
+    grid-template-columns:repeat(5, 2.8rem);
+  }
+  .crossword-cell{
+    width:2.8rem;
+    height:2.8rem;
+  }
+}
+
+@media (max-width:390px){
+  .crossword-grid{
+    grid-template-columns:repeat(5, 2.4rem);
+  }
+  .crossword-cell{
+    width:2.4rem;
+    height:2.4rem;
+  }
+  .crossword-cell__letter{
+    font-size:1.1rem;
+  }
+}
+
