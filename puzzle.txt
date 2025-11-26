@@ -1,33 +1,16 @@
 !!11/25/25
-#JOB#
-VENUS
-ININK
-AGONY
-#ANY#
-@1a LinkedIn Listing (This puzzle is from NYT mini for testing)
-@4a Planet with an average surface tempreature of aroudn 860°F
-@6a Written with a pen
-@7a Sheer torment
-@8a "__ thoughts?"
-@1d Block tower
-@2d "Red" vegetable that's really purple, if you ask me
-@3d Word with Bad or Bugs
-@4d By way of
-@5d "Excuse me while I kiss the __" (Hendrix lyric that's famously misheard)
-!!11/24/25
-#JOB##
-VENUS#
-ININK#
-AGONY#
-#ANY##
-######
-@1a TEST
-@4a TESTA
-@6a TESTB
-@7a Sheer torment
-@8a "__ thoughts?"
-@1d Block tower
-@2d "Red" vegetable that's really purple, if you ask me
-@3d Word with Bad or Bugs
-@4d By way of
-@5d "Excuse me while I kiss the __" (Hendrix lyric that's famously misheard)
+##PARE
+GRATIN
+O#N##Z
+UNEASY
+D#E##M
+AERATE
+@1a Cut away the rind of cheese, for example
+@5a French term for a dish browned with a layer of cheese
+@6a How one might feel after eating moldy cheese
+@7a To introduce gas into, used to make cheese lighter and fluffier
+@1d Indian Cheese
+@2d Don't __ me
+@3d Postal abbreviation for the smallest U.S. State
+@4d Important protein required to turn milk into cheese
+@5d A soft, sweet cheese

@@ -1,89 +1,54 @@
-// Crossword puzzle parser and interactive handler
 class CrosswordPuzzle {
   constructor() {
-    this.rows = 0; // Will be determined dynamically
-    this.cols = 0; // Will be determined dynamically
-    this.allPuzzles = {}; // Map of date -> puzzle data
+    this.rows = 0;
+    this.cols = 0;
+    this.allPuzzles = {};
     this.currentDate = '';
     this.grid = [];
     this.clues = { across: {}, down: {} };
     this.date = '';
-    this.cellData = []; // Stores {row, col, isBlock, clueNum, letter}
-    this.selectedDirection = null; // 'across' or 'down'
+    this.cellData = [];
+    this.selectedDirection = null;
     this.selectedClueNum = null;
     this.activeCellIndex = null;
-    this.userInput = []; // User-entered letters
+    this.userInput = [];
     this.keyboardListenerAdded = false;
-    this.mobileInput = null; // Hidden input for mobile keyboard
+    this.mobileInput = null;
+    this.isComplete = false;
   }
 
   parseDate(dateStr) {
-    // Parse MM/DD/YY format
     const [month, day, year] = dateStr.split('/').map(Number);
     return new Date(2000 + year, month - 1, day);
   }
 
   async loadPuzzle() {
     try {
-      const response = await fetch('puzzle.txt');
-      const text = await response.text();
-      const lines = text.trim().split('\n');
-      
-      // Parse all puzzles from file
-      let currentDate = '';
-      let currentGrid = [];
-      let currentClues = { across: {}, down: {} };
-      let gridStartLine = -1;
+      const lines = (await (await fetch('puzzle.txt')).text()).trim().split('\n');
+      let currentDate = '', currentGrid = [], currentClues = { across: {}, down: {} }, gridStartLine = -1;
       
       lines.forEach((line, idx) => {
         if (line.startsWith('!!')) {
-          // Save previous puzzle if exists
           if (currentDate && gridStartLine >= 0 && currentGrid.length > 0) {
-            this.allPuzzles[currentDate] = {
-              date: currentDate,
-              grid: currentGrid,
-              clues: { ...currentClues }
-            };
+            this.allPuzzles[currentDate] = { date: currentDate, grid: currentGrid, clues: { ...currentClues } };
           }
-          // Start new puzzle
           currentDate = line.substring(2);
           currentGrid = [];
           currentClues = { across: {}, down: {} };
           gridStartLine = idx + 1;
         } else if (gridStartLine >= 0 && line.startsWith('@')) {
-          // Clue lines (after grid)
           const match = line.match(/@(\d+)([ad])\s+(.+)/);
-          if (match) {
-            const num = parseInt(match[1]);
-            const dir = match[2] === 'a' ? 'across' : 'down';
-            const clueText = match[3];
-            currentClues[dir][num] = clueText;
-          }
-        } else if (gridStartLine >= 0 && idx >= gridStartLine) {
-          // Grid lines - continue until we hit a clue line or new puzzle
-          // Check if this looks like a grid line (not empty, not starting with @ or !!)
-          if (line.trim().length > 0 && !line.startsWith('@') && !line.startsWith('!!')) {
-            currentGrid.push(line.split(''));
-          }
+          if (match) currentClues[match[2] === 'a' ? 'across' : 'down'][parseInt(match[1])] = match[3];
+        } else if (gridStartLine >= 0 && idx >= gridStartLine && line.trim() && !line.startsWith('@') && !line.startsWith('!!')) {
+          currentGrid.push(line.split(''));
         }
       });
       
-      // Save last puzzle
       if (currentDate && gridStartLine >= 0) {
-        this.allPuzzles[currentDate] = {
-          date: currentDate,
-          grid: currentGrid,
-          clues: { ...currentClues }
-        };
+        this.allPuzzles[currentDate] = { date: currentDate, grid: currentGrid, clues: { ...currentClues } };
       }
       
-      // Load most recent puzzle (last date chronologically)
-      const dates = Object.keys(this.allPuzzles).sort((a, b) => {
-        const aDate = this.parseDate(a);
-        const bDate = this.parseDate(b);
-        return bDate - aDate; // Most recent first
-      });
-      
+      const dates = Object.keys(this.allPuzzles).sort((a, b) => this.parseDate(b) - this.parseDate(a));
       if (dates.length > 0) {
         this.currentDate = dates[0];
         this.loadPuzzleByDate(this.currentDate);
@@ -102,448 +67,284 @@ class CrosswordPuzzle {
     this.grid = puzzle.grid;
     this.clues = { across: { ...puzzle.clues.across }, down: { ...puzzle.clues.down } };
     this.currentDate = date;
-    
-    // Determine grid size dynamically
-    if (this.grid.length > 0) {
-      this.rows = this.grid.length;
-      this.cols = Math.max(...this.grid.map(row => row.length)); // Use max column width
-    }
-    
-    // Reset user input and selection
+    this.rows = this.grid.length;
+    this.cols = Math.max(...this.grid.map(row => row.length));
     this.userInput = [];
     this.selectedDirection = null;
     this.selectedClueNum = null;
     this.activeCellIndex = null;
+    this.isComplete = false;
+    if (this.mobileInput) this.mobileInput.disabled = false;
     
     this.buildCellData();
     this.render();
-    this.renderDateDropdown(); // Update dropdown selection
+    this.renderDateDropdown();
   }
 
   buildCellData() {
     this.cellData = [];
-    
-    // First pass: identify blocks and build cell data
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         const char = (this.grid[row] && this.grid[row][col]) || '#';
         const isBlock = char === '#';
-        const letter = isBlock ? '' : char;
-        
-        this.cellData.push({
-          row,
-          col,
-          isBlock,
-          letter,
-          clueNum: null,
-          hasAcross: false,
-          hasDown: false
-        });
+        this.cellData.push({ row, col, isBlock, letter: isBlock ? '' : char, clueNum: null, hasAcross: false, hasDown: false });
       }
     }
     
-    // Second pass: find all word starts in reading order
-    const acrossStarts = [];
-    const downStarts = [];
-    
+    const acrossStarts = [], downStarts = [];
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         const idx = row * this.cols + col;
         const cell = this.cellData[idx];
-        
         if (cell.isBlock) continue;
         
-        // Check if start of across word
-        const prevCol = col - 1;
-        const nextCol = col + 1;
-        const isStartAcross = (prevCol < 0 || this.cellData[row * this.cols + prevCol].isBlock) &&
-                             (nextCol < this.cols && !this.cellData[row * this.cols + nextCol].isBlock);
+        const isStartAcross = (col === 0 || this.cellData[row * this.cols + col - 1].isBlock) && (col < this.cols - 1 && !this.cellData[row * this.cols + col + 1].isBlock);
+        const isStartDown = (row === 0 || this.cellData[(row - 1) * this.cols + col].isBlock) && (row < this.rows - 1 && !this.cellData[(row + 1) * this.cols + col].isBlock);
         
-        // Check if start of down word
-        const prevRow = row - 1;
-        const nextRow = row + 1;
-        const isStartDown = (prevRow < 0 || this.cellData[prevRow * this.cols + col].isBlock) &&
-                            (nextRow < this.rows && !this.cellData[nextRow * this.cols + col].isBlock);
-        
-        if (isStartAcross) {
-          acrossStarts.push({row, col, idx});
-          cell.hasAcross = true;
-        }
-        
-        if (isStartDown) {
-          downStarts.push({row, col, idx});
-          cell.hasDown = true;
-        }
+        if (isStartAcross) { acrossStarts.push({row, col, idx}); cell.hasAcross = true; }
+        if (isStartDown) { downStarts.push({row, col, idx}); cell.hasDown = true; }
       }
     }
     
-    // Third pass: assign clue numbers in reading order
-    // Standard crossword numbering: all word starts numbered sequentially in reading order
-    // (left to right, top to bottom). Cells that start both across and down get the same number.
-    
-    // Collect all unique word start positions in reading order
-    const allWordStarts = new Map(); // Maps "row,col" to {row, col, idx, hasAcross, hasDown}
-    
-    acrossStarts.forEach(start => {
+    const allWordStarts = new Map();
+    [...acrossStarts, ...downStarts].forEach(start => {
       const key = `${start.row},${start.col}`;
       if (!allWordStarts.has(key)) {
-        allWordStarts.set(key, {row: start.row, col: start.col, idx: start.idx, hasAcross: true, hasDown: false});
+        allWordStarts.set(key, {row: start.row, col: start.col, idx: start.idx, hasAcross: start.hasAcross || false, hasDown: start.hasDown || false});
       } else {
-        allWordStarts.get(key).hasAcross = true;
+        allWordStarts.get(key).hasAcross = allWordStarts.get(key).hasAcross || start.hasAcross;
+        allWordStarts.get(key).hasDown = allWordStarts.get(key).hasDown || start.hasDown;
       }
     });
     
-    downStarts.forEach(start => {
-      const key = `${start.row},${start.col}`;
-      if (!allWordStarts.has(key)) {
-        allWordStarts.set(key, {row: start.row, col: start.col, idx: start.idx, hasAcross: false, hasDown: true});
-      } else {
-        allWordStarts.get(key).hasDown = true;
-      }
+    Array.from(allWordStarts.values()).sort((a, b) => a.row !== b.row ? a.row - b.row : a.col - b.col).forEach((start, i) => {
+      this.cellData[start.idx].clueNum = i + 1;
     });
     
-    // Sort by reading order (row first, then col)
-    const sortedStarts = Array.from(allWordStarts.values()).sort((a, b) => {
-      if (a.row !== b.row) return a.row - b.row;
-      return a.col - b.col;
-    });
-    
-    // Assign sequential clue numbers starting from 1
-    let sequentialNum = 1;
-    sortedStarts.forEach(start => {
-      this.cellData[start.idx].clueNum = sequentialNum;
-      sequentialNum++;
-    });
-    
-    // Initialize user input array
     this.userInput = new Array(this.cellData.length).fill('');
   }
 
-  getCellIndex(row, col) {
-    return row * this.cols + col;
-  }
+  getCellIndex(row, col) { return row * this.cols + col; }
 
   getCellsInDirection(row, col, direction) {
     const cells = [];
     if (direction === 'across') {
-      // Find start of word
       let startCol = col;
-      while (startCol > 0) {
-        const prevIdx = this.getCellIndex(row, startCol - 1);
-        if (this.cellData[prevIdx].isBlock) break;
-        startCol--;
+      while (startCol > 0 && !this.cellData[this.getCellIndex(row, startCol - 1)].isBlock) startCol--;
+      for (let c = startCol; c < this.cols && !this.cellData[this.getCellIndex(row, c)].isBlock; c++) {
+        cells.push(this.getCellIndex(row, c));
       }
-      // Collect all cells in the word
-      let c = startCol;
-      while (c < this.cols) {
-        const idx = this.getCellIndex(row, c);
-        if (this.cellData[idx].isBlock) break;
-        cells.push(idx);
-        c++;
-      }
-    } else { // down
-      // Find start of word
+    } else {
       let startRow = row;
-      while (startRow > 0) {
-        const prevIdx = this.getCellIndex(startRow - 1, col);
-        if (this.cellData[prevIdx].isBlock) break;
-        startRow--;
-      }
-      // Collect all cells in the word
-      let r = startRow;
-      while (r < this.rows) {
-        const idx = this.getCellIndex(r, col);
-        if (this.cellData[idx].isBlock) break;
-        cells.push(idx);
-        r++;
+      while (startRow > 0 && !this.cellData[this.getCellIndex(startRow - 1, col)].isBlock) startRow--;
+      for (let r = startRow; r < this.rows && !this.cellData[this.getCellIndex(r, col)].isBlock; r++) {
+        cells.push(this.getCellIndex(r, col));
       }
     }
     return cells;
   }
 
   getClueNumForCell(row, col, direction) {
-    const idx = this.getCellIndex(row, col);
-    const cell = this.cellData[idx];
-    if (!cell || cell.isBlock) return null;
-    
-    // Find the start of the word in this direction
     const cells = this.getCellsInDirection(row, col, direction);
-    if (cells.length === 0) return null;
-    
-    const startIdx = cells[0];
-    return this.cellData[startIdx].clueNum;
+    return cells.length > 0 ? this.cellData[cells[0]].clueNum : null;
   }
 
   getNextWordStart(row, col, direction) {
-    // Find the next word start in the same direction (reading order: left to right, top to bottom)
-    // Start searching from the position after the current word
     const currentCells = this.getCellsInDirection(row, col, direction);
     if (currentCells.length === 0) return null;
-    
     const lastCell = this.cellData[currentCells[currentCells.length - 1]];
-    let startRow = lastCell.row;
-    let startCol = lastCell.col;
+    let startRow = lastCell.row, startCol = lastCell.col;
     
     if (direction === 'across') {
-      // Search row by row, left to right
-      startCol++;
-      for (let r = startRow; r < this.rows; r++) {
-        const startC = (r === startRow) ? startCol : 0;
+      for (let r = startRow, startC = startCol + 1; r < this.rows; r++, startC = 0) {
         for (let c = startC; c < this.cols; c++) {
-          const idx = this.getCellIndex(r, c);
-          const cell = this.cellData[idx];
-          if (cell.isBlock) continue;
-          
-          // Check if this cell starts an across word
-          if (cell.hasAcross) {
-            return { row: r, col: c, idx: idx };
-          }
+          const cell = this.cellData[this.getCellIndex(r, c)];
+          if (!cell.isBlock && cell.hasAcross) return { row: r, col: c, idx: this.getCellIndex(r, c) };
         }
       }
-    } else { // down
-      // Search column by column, top to bottom
-      startRow++;
-      for (let c = startCol; c < this.cols; c++) {
-        const startR = (c === startCol) ? startRow : 0;
+    } else {
+      for (let c = startCol, startR = startRow + 1; c < this.cols; c++, startR = 0) {
         for (let r = startR; r < this.rows; r++) {
-          const idx = this.getCellIndex(r, c);
-          const cell = this.cellData[idx];
-          if (cell.isBlock) continue;
-          
-          // Check if this cell starts a down word
-          if (cell.hasDown) {
-            return { row: r, col: c, idx: idx };
-          }
+          const cell = this.cellData[this.getCellIndex(r, c)];
+          if (!cell.isBlock && cell.hasDown) return { row: r, col: c, idx: this.getCellIndex(r, c) };
         }
       }
     }
-    return null; // No next word found
+    return null;
   }
 
   getPreviousWordEnd(row, col, direction) {
-    // Find the previous word end in the same direction
-    // Start searching from the position before the current word
     const currentCells = this.getCellsInDirection(row, col, direction);
     if (currentCells.length === 0) return null;
-    
     const firstCell = this.cellData[currentCells[0]];
-    let startRow = firstCell.row;
-    let startCol = firstCell.col;
+    let startRow = firstCell.row, startCol = firstCell.col;
     
     if (direction === 'across') {
-      // Search row by row, right to left, bottom to top
-      startCol--;
-      for (let r = startRow; r >= 0; r--) {
-        const startC = (r === startRow) ? startCol : this.cols - 1;
+      for (let r = startRow, startC = startCol - 1; r >= 0; r--, startC = this.cols - 1) {
         for (let c = startC; c >= 0; c--) {
-          const idx = this.getCellIndex(r, c);
-          const cell = this.cellData[idx];
-          if (cell.isBlock) continue;
-          
-          // Check if this cell starts a word in the same direction
-          if (cell.hasAcross) {
-            // Get the end of this word
+          const cell = this.cellData[this.getCellIndex(r, c)];
+          if (!cell.isBlock && cell.hasAcross) {
             const wordCells = this.getCellsInDirection(r, c, direction);
             if (wordCells.length > 0) {
-              const endIdx = wordCells[wordCells.length - 1];
-              const endCell = this.cellData[endIdx];
-              return { row: endCell.row, col: endCell.col, idx: endIdx };
+              const endCell = this.cellData[wordCells[wordCells.length - 1]];
+              return { row: endCell.row, col: endCell.col, idx: wordCells[wordCells.length - 1] };
             }
           }
         }
       }
-    } else { // down
-      // Search column by column, bottom to top, right to left
-      startRow--;
-      for (let c = startCol; c >= 0; c--) {
-        const startR = (c === startCol) ? startRow : this.rows - 1;
+    } else {
+      for (let c = startCol, startR = startRow - 1; c >= 0; c--, startR = this.rows - 1) {
         for (let r = startR; r >= 0; r--) {
-          const idx = this.getCellIndex(r, c);
-          const cell = this.cellData[idx];
-          if (cell.isBlock) continue;
-          
-          // Check if this cell starts a word in the same direction
-          if (cell.hasDown) {
-            // Get the end of this word
+          const cell = this.cellData[this.getCellIndex(r, c)];
+          if (!cell.isBlock && cell.hasDown) {
             const wordCells = this.getCellsInDirection(r, c, direction);
             if (wordCells.length > 0) {
-              const endIdx = wordCells[wordCells.length - 1];
-              const endCell = this.cellData[endIdx];
-              return { row: endCell.row, col: endCell.col, idx: endIdx };
+              const endCell = this.cellData[wordCells[wordCells.length - 1]];
+              return { row: endCell.row, col: endCell.col, idx: wordCells[wordCells.length - 1] };
             }
           }
         }
       }
     }
-    return null; // No previous word found
+    return null;
   }
 
   selectCell(row, col) {
+    if (this.isComplete) return;
     const idx = this.getCellIndex(row, col);
     const cell = this.cellData[idx];
-    
     if (cell.isBlock) return;
     
-    // Determine direction
     let direction = this.selectedDirection;
     if (this.selectedClueNum && this.activeCellIndex === idx && direction) {
-      // Toggle direction if clicking same cell
       direction = direction === 'across' ? 'down' : 'across';
     } else {
-      // Default to across if both available, otherwise use available direction
-      if (cell.hasAcross && cell.hasDown) {
-        direction = this.selectedDirection || 'across';
-      } else if (cell.hasAcross) {
-        direction = 'across';
-      } else if (cell.hasDown) {
-        direction = 'down';
-      } else {
-        // Find which direction this cell belongs to
+      if (cell.hasAcross && cell.hasDown) direction = this.selectedDirection || 'across';
+      else if (cell.hasAcross) direction = 'across';
+      else if (cell.hasDown) direction = 'down';
+      else {
         const acrossCells = this.getCellsInDirection(row, col, 'across');
-        const downCells = this.getCellsInDirection(row, col, 'down');
-        if (acrossCells.length > 0) direction = 'across';
-        else if (downCells.length > 0) direction = 'down';
+        direction = acrossCells.length > 0 ? 'across' : (this.getCellsInDirection(row, col, 'down').length > 0 ? 'down' : null);
       }
     }
     
     this.selectedDirection = direction;
     this.selectedClueNum = this.getClueNumForCell(row, col, direction);
     this.activeCellIndex = idx;
-    
     this.updateHighlighting();
   }
 
   updateHighlighting() {
-    // Remove all highlighting
-    document.querySelectorAll('.crossword-cell').forEach(cell => {
-      cell.classList.remove('crossword-cell--selected', 'crossword-cell--highlighted');
-    });
-    document.querySelectorAll('.crossword-clue-list li').forEach(li => {
-      li.classList.remove('crossword-clue--highlighted');
-    });
+    document.querySelectorAll('.crossword-cell').forEach(cell => cell.classList.remove('crossword-cell--selected', 'crossword-cell--highlighted'));
+    document.querySelectorAll('.crossword-clue-list li').forEach(li => li.classList.remove('crossword-clue--highlighted'));
     
     if (this.selectedDirection && this.activeCellIndex !== null) {
-      const cell = this.cellData[this.activeCellIndex];
-      const cells = this.getCellsInDirection(cell.row, cell.col, this.selectedDirection);
-      
-      // Highlight cells
+      const cells = this.getCellsInDirection(this.cellData[this.activeCellIndex].row, this.cellData[this.activeCellIndex].col, this.selectedDirection);
       cells.forEach(idx => {
         const cellEl = document.querySelector(`[data-index="${idx}"]`);
         if (cellEl) {
-          if (idx === this.activeCellIndex) {
-            cellEl.classList.add('crossword-cell--selected');
-            // Focus mobile input to trigger keyboard on mobile
-            if (this.mobileInput) {
-              // Store scroll position before focusing
-              const scrollY = window.scrollY;
-              const scrollX = window.scrollX;
-              
-              // Focus the input
-              this.mobileInput.focus();
-              
-              // Immediately restore scroll position to prevent jumping
-              requestAnimationFrame(() => {
-                window.scrollTo(scrollX, scrollY);
-              });
-            }
-          } else {
-            cellEl.classList.add('crossword-cell--highlighted');
+          cellEl.classList.add(idx === this.activeCellIndex ? 'crossword-cell--selected' : 'crossword-cell--highlighted');
+          if (idx === this.activeCellIndex && this.mobileInput) {
+            const scrollY = window.scrollY, scrollX = window.scrollX;
+            this.mobileInput.focus();
+            requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
           }
         }
       });
       
-      // Highlight clue
       if (this.selectedClueNum) {
         const clueEl = document.querySelector(`[data-clue-num="${this.selectedClueNum}"][data-clue-dir="${this.selectedDirection}"]`);
-        if (clueEl) {
-          clueEl.classList.add('crossword-clue--highlighted');
-        }
+        if (clueEl) clueEl.classList.add('crossword-clue--highlighted');
       }
     }
   }
 
+  checkPuzzle() {
+    for (let idx = 0; idx < this.cellData.length; idx++) {
+      const cell = this.cellData[idx];
+      if (!cell.isBlock && (!this.userInput[idx] || this.userInput[idx].length === 0)) return false;
+      if (!cell.isBlock && (this.userInput[idx] || '').toUpperCase() !== cell.letter.toUpperCase()) return false;
+    }
+    return true;
+  }
+
+  handleCheckButton() {
+    const isCorrect = this.checkPuzzle();
+    const checkButton = document.getElementById('crossword-check-button');
+    
+    if (isCorrect) {
+      this.isComplete = true;
+      this.cellData.forEach((cell, idx) => {
+        if (!cell.isBlock) {
+          const cellEl = document.querySelector(`[data-index="${idx}"]`);
+          if (cellEl) cellEl.classList.add('crossword-cell--correct');
+        }
+      });
+      if (this.mobileInput) { this.mobileInput.disabled = true; this.mobileInput.blur(); }
+      if (checkButton) { checkButton.disabled = true; checkButton.textContent = 'Complete!'; }
+      this.selectedDirection = null;
+      this.selectedClueNum = null;
+      this.activeCellIndex = null;
+      this.updateHighlighting();
+    } else if (checkButton) {
+      checkButton.classList.add('crossword-check-button--shake');
+      setTimeout(() => checkButton.classList.remove('crossword-check-button--shake'), 500);
+    }
+  }
+
   handleKeyPress(key) {
-    if (this.activeCellIndex === null || this.selectedDirection === null) return;
+    if (this.isComplete || this.activeCellIndex === null || this.selectedDirection === null) return;
     
     const cell = this.cellData[this.activeCellIndex];
     const cells = this.getCellsInDirection(cell.row, cell.col, this.selectedDirection);
     const currentIdx = cells.indexOf(this.activeCellIndex);
-    const hasText = this.userInput[this.activeCellIndex] && this.userInput[this.activeCellIndex].length > 0;
+    const hasText = this.userInput[this.activeCellIndex]?.length > 0;
     
     if (key === 'Backspace' || key === 'Delete') {
       if (hasText) {
-        // If cell has text, delete it but don't move
         this.userInput[this.activeCellIndex] = '';
         const cellEl = document.querySelector(`[data-index="${this.activeCellIndex}"] .crossword-cell__letter`);
-        if (cellEl) {
-          cellEl.textContent = '';
-        }
+        if (cellEl) cellEl.textContent = '';
+        this.updateHighlighting();
+      } else if (currentIdx > 0) {
+        this.activeCellIndex = cells[currentIdx - 1];
         this.updateHighlighting();
       } else {
-        // If cell is empty, move back
-        if (currentIdx > 0) {
-          // Move to previous cell in current word
-          this.activeCellIndex = cells[currentIdx - 1];
-          this.updateHighlighting();
-        } else {
-          // At beginning of word, move to end of previous word
-          const prevWord = this.getPreviousWordEnd(cell.row, cell.col, this.selectedDirection);
-          if (prevWord) {
-            this.selectCell(prevWord.row, prevWord.col);
-            this.activeCellIndex = prevWord.idx;
-            this.updateHighlighting();
-          } else {
-            // No previous word, stay at current position
-            this.updateHighlighting();
-          }
+        const prevWord = this.getPreviousWordEnd(cell.row, cell.col, this.selectedDirection);
+        if (prevWord) {
+          this.selectCell(prevWord.row, prevWord.col);
+          this.activeCellIndex = prevWord.idx;
         }
+        this.updateHighlighting();
       }
     } else if (key.length === 1 && /[A-Za-z]/.test(key)) {
-      // Enter letter
       const letter = key.toUpperCase();
       this.userInput[this.activeCellIndex] = letter;
-      
-      // Update display
       const cellEl = document.querySelector(`[data-index="${this.activeCellIndex}"] .crossword-cell__letter`);
-      if (cellEl) {
-        cellEl.textContent = letter;
-      }
+      if (cellEl) cellEl.textContent = letter;
       
-      // Move to next cell
       if (currentIdx < cells.length - 1) {
-        // Move to next cell in current word
         this.activeCellIndex = cells[currentIdx + 1];
       } else {
-        // At end of word, move to start of next word
         const nextWord = this.getNextWordStart(cell.row, cell.col, this.selectedDirection);
         if (nextWord) {
           this.selectCell(nextWord.row, nextWord.col);
           this.activeCellIndex = nextWord.idx;
         } else {
-          // No next word, wrap to beginning of current word
           this.activeCellIndex = cells[0];
         }
       }
-      
       this.updateHighlighting();
     }
   }
 
   render() {
-    const container = document.querySelector('.crossword-wrapper');
-    if (!container) return;
-    
-    // Update date
     const dateEl = document.getElementById('crossword-date-display');
-    if (dateEl) {
-      dateEl.textContent = this.date;
-    }
+    if (dateEl) dateEl.textContent = this.date;
     
-    // Render grid
     const gridEl = document.querySelector('.crossword-grid');
     if (gridEl) {
       gridEl.innerHTML = '';
-      // Set dynamic grid size
       gridEl.style.gridTemplateColumns = `repeat(${this.cols}, 3.2rem)`;
       this.cellData.forEach((cell, idx) => {
         const cellEl = document.createElement('span');
@@ -557,81 +358,50 @@ class CrosswordPuzzle {
         } else {
           const indexEl = document.createElement('span');
           indexEl.className = 'crossword-cell__index';
-          if (cell.clueNum) {
-            indexEl.textContent = cell.clueNum;
-          }
+          if (cell.clueNum) indexEl.textContent = cell.clueNum;
           cellEl.appendChild(indexEl);
           
           const letterEl = document.createElement('span');
           letterEl.className = 'crossword-cell__letter';
           letterEl.textContent = this.userInput[idx] || '';
+          if (this.isComplete) cellEl.classList.add('crossword-cell--correct');
           cellEl.appendChild(letterEl);
           
-          cellEl.addEventListener('click', () => {
-            this.selectCell(cell.row, cell.col);
-          });
+          if (!this.isComplete) {
+            cellEl.addEventListener('click', () => this.selectCell(cell.row, cell.col));
+          }
         }
-        
         gridEl.appendChild(cellEl);
       });
     }
     
-    // Render clues
     const cluesEl = document.querySelector('.crossword-clues');
     if (cluesEl) {
       cluesEl.innerHTML = '';
-      
-      // Across clues
-      const acrossGroup = document.createElement('div');
-      acrossGroup.className = 'crossword-clue-group';
-      const acrossTitle = document.createElement('h3');
-      acrossTitle.textContent = 'Across';
-      acrossGroup.appendChild(acrossTitle);
-      
-      const acrossList = document.createElement('ol');
-      acrossList.className = 'crossword-clue-list';
-      Object.keys(this.clues.across).sort((a, b) => parseInt(a) - parseInt(b)).forEach(num => {
-        const li = document.createElement('li');
-        li.setAttribute('value', num);
-        li.setAttribute('data-clue-num', num);
-        li.setAttribute('data-clue-dir', 'across');
-        li.textContent = this.clues.across[num];
-        acrossList.appendChild(li);
+      ['across', 'down'].forEach(dir => {
+        const group = document.createElement('div');
+        group.className = 'crossword-clue-group';
+        const title = document.createElement('h3');
+        title.textContent = dir.charAt(0).toUpperCase() + dir.slice(1);
+        group.appendChild(title);
+        const list = document.createElement('ol');
+        list.className = 'crossword-clue-list';
+        Object.keys(this.clues[dir]).sort((a, b) => parseInt(a) - parseInt(b)).forEach(num => {
+          const li = document.createElement('li');
+          li.setAttribute('value', num);
+          li.setAttribute('data-clue-num', num);
+          li.setAttribute('data-clue-dir', dir);
+          li.textContent = this.clues[dir][num];
+          list.appendChild(li);
+        });
+        group.appendChild(list);
+        cluesEl.appendChild(group);
       });
-      acrossGroup.appendChild(acrossList);
-      cluesEl.appendChild(acrossGroup);
-      
-      // Down clues
-      const downGroup = document.createElement('div');
-      downGroup.className = 'crossword-clue-group';
-      const downTitle = document.createElement('h3');
-      downTitle.textContent = 'Down';
-      downGroup.appendChild(downTitle);
-      
-      const downList = document.createElement('ol');
-      downList.className = 'crossword-clue-list';
-      Object.keys(this.clues.down).sort((a, b) => parseInt(a) - parseInt(b)).forEach(num => {
-        const li = document.createElement('li');
-        li.setAttribute('value', num);
-        li.setAttribute('data-clue-num', num);
-        li.setAttribute('data-clue-dir', 'down');
-        li.textContent = this.clues.down[num];
-        downList.appendChild(li);
-      });
-      downGroup.appendChild(downList);
-      cluesEl.appendChild(downGroup);
     }
     
-    // Add keyboard listener (only once)
     if (!this.keyboardListenerAdded) {
       document.addEventListener('keydown', (e) => {
-        // Don't interfere with form inputs or the mobile input
-        if (document.activeElement.tagName === 'INPUT' || 
-            document.activeElement.tagName === 'TEXTAREA' ||
-            document.activeElement.tagName === 'SELECT' ||
-            document.activeElement === this.mobileInput) {
-          return;
-        }
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement === this.mobileInput) return;
         this.handleKeyPress(e.key);
       });
       this.keyboardListenerAdded = true;
@@ -642,75 +412,75 @@ class CrosswordPuzzle {
     const dropdownContainer = document.querySelector('.crossword-controls');
     if (!dropdownContainer) return;
     
-    // Remove existing dropdown if any
     const existingSelect = dropdownContainer.querySelector('.crossword-date-select');
-    if (existingSelect) {
-      existingSelect.remove();
-    }
+    if (existingSelect) existingSelect.remove();
     
     const select = document.createElement('select');
     select.className = 'crossword-date-select';
     select.id = 'crossword-date-select';
-    
-    const dates = Object.keys(this.allPuzzles).sort((a, b) => {
-      // Parse dates and compare (most recent first)
-      const aDate = this.parseDate(a);
-      const bDate = this.parseDate(b);
-      return bDate - aDate;
-    });
-    
-    dates.forEach(date => {
+    Object.keys(this.allPuzzles).sort((a, b) => this.parseDate(b) - this.parseDate(a)).forEach(date => {
       const option = document.createElement('option');
       option.value = date;
       option.textContent = date;
-      if (date === this.currentDate) {
-        option.selected = true;
-      }
+      if (date === this.currentDate) option.selected = true;
       select.appendChild(option);
     });
-    
-    select.addEventListener('change', (e) => {
-      this.loadPuzzleByDate(e.target.value);
-    });
-    
+    select.addEventListener('change', (e) => this.loadPuzzleByDate(e.target.value));
     dropdownContainer.appendChild(select);
+    
+    let checkButton = document.getElementById('crossword-check-button');
+    if (!checkButton) {
+      checkButton = document.createElement('button');
+      checkButton.id = 'crossword-check-button';
+      checkButton.className = 'crossword-check-button';
+      checkButton.textContent = 'Check Puzzle';
+      checkButton.addEventListener('click', () => this.handleCheckButton());
+      dropdownContainer.appendChild(checkButton);
+    }
+    if (this.isComplete) {
+      checkButton.disabled = true;
+      checkButton.textContent = 'Complete!';
+    } else {
+      checkButton.disabled = false;
+      checkButton.textContent = 'Check Puzzle';
+    }
   }
 }
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const puzzle = new CrosswordPuzzle();
-  // Create mobile input immediately
   puzzle.mobileInput = document.createElement('input');
-  puzzle.mobileInput.type = 'text';
-  puzzle.mobileInput.className = 'crossword-mobile-input';
+  Object.assign(puzzle.mobileInput, {
+    type: 'text',
+    className: 'crossword-mobile-input',
+    maxLength: 1,
+    inputMode: 'text',
+    autocomplete: 'off',
+    autocorrect: 'off',
+    autocapitalize: 'off',
+    spellcheck: false
+  });
+  Object.assign(puzzle.mobileInput.style, {
+    position: 'fixed',
+    opacity: '0',
+    width: '1px',
+    height: '1px',
+    pointerEvents: 'none',
+    top: '0',
+    left: '0',
+    zIndex: '-1'
+  });
   puzzle.mobileInput.setAttribute('aria-hidden', 'true');
   puzzle.mobileInput.setAttribute('tabindex', '-1');
-  puzzle.mobileInput.style.position = 'fixed';
-  puzzle.mobileInput.style.opacity = '0';
-  puzzle.mobileInput.style.width = '1px';
-  puzzle.mobileInput.style.height = '1px';
-  puzzle.mobileInput.style.pointerEvents = 'none';
-  puzzle.mobileInput.style.top = '0';
-  puzzle.mobileInput.style.left = '0';
-  puzzle.mobileInput.style.zIndex = '-1';
-  puzzle.mobileInput.maxLength = 1;
-  puzzle.mobileInput.inputMode = 'text';
-  puzzle.mobileInput.autocomplete = 'off';
-  puzzle.mobileInput.autocorrect = 'off';
-  puzzle.mobileInput.autocapitalize = 'off';
-  puzzle.mobileInput.spellcheck = false;
   
-  // Handle input events
   puzzle.mobileInput.addEventListener('input', (e) => {
     const value = e.target.value.toUpperCase();
     if (value && /[A-Z]/.test(value)) {
       puzzle.handleKeyPress(value);
-      e.target.value = ''; // Clear input after handling
+      e.target.value = '';
     }
   });
   
-  // Handle keydown for backspace
   puzzle.mobileInput.addEventListener('keydown', (e) => {
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
@@ -718,18 +488,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // Prevent scrolling when input is focused
-  puzzle.mobileInput.addEventListener('focus', (e) => {
-    // Store current scroll position
-    const scrollY = window.scrollY;
-    const scrollX = window.scrollX;
-    // Prevent scroll by restoring position
-    requestAnimationFrame(() => {
-      window.scrollTo(scrollX, scrollY);
-    });
+  puzzle.mobileInput.addEventListener('focus', () => {
+    const scrollY = window.scrollY, scrollX = window.scrollX;
+    requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
   });
   
   document.body.appendChild(puzzle.mobileInput);
   puzzle.loadPuzzle();
 });
-
