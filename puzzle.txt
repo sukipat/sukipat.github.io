@@ -1,3 +1,19 @@
+!!11/28/25
+ATM##
+SHOPS
+IONIC
+ARENA
+##YEN
+@1a Device common in cash only establishments
+@4a What one does on black friday
+@7a Type of atomic bond depending on electrostatic forces
+@8a Type of sports venue
+@9a Japanese form of 3-down
+@1d Continent where 9-Across is used
+@2d Norse god of thunder
+@3d Objects (usually paper) exchanged for goods in a marketplace
+@5d Evergreen tree native to North America
+@6d What one does with a barcode
 !!11/25/25
 ##PARE
 GRATIN
@@ -6,8 +22,8 @@ UNEASY
 D#E##M
 AERATE
 @1a Cut away the rind of cheese, for example
-@5a French term for a dish browned with a layer of cheese
-@6a How one might feel after eating moldy cheese
+@5a Potatos au ______ (potatoes coated in cheese sauce and baked)
+@6a How one might feel about eating an unrefrigerated dairy product
 @7a To introduce gas into, used to make cheese lighter and fluffier
 @1d Indian Cheese
 @2d Don't __ me
