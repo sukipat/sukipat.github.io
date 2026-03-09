@@ -1,3 +1,17 @@
+!!03/08/26
+OSCAR
+RHINO
+CORGI
+ARC##
+STEER
+@1a First name of meat company that makes daschund shaped foods.
+@6a Horned animals, who can run deceivingly fast (30-40 mph) for their size.
+@7a Beloved breed, favored by Queen Elizabeth II.
+@8a Shape dolphins make when jumping out of the water.
+@9a A young neutered male cattle.
+@1d Marine super-predators, whose language can have distinct dialects and accents.
+@2d Chihuahua legs, compared to that of a great dane.
+@3d Greek goddess famous for turning humans into animals.
 !!11/28/25
 ATM##
 SHOPS
