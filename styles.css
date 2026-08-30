@@ -91,6 +91,8 @@ body{
 
 .grid-item h3{margin:12px 0 6px; font-size:1.75rem;}
 
+.tap-hint{display:none;}
+
 .grid-desc {
 list-style: disc;
 padding-left: 20px;
@@ -148,14 +150,65 @@ line-height: 1.5;
    BREAKPOINT — 768px
    ========================== */
 @media (max-width:768px){
-  .intro{flex-direction:column; text-align:center;}
-  .hero img{width:180px; height:180px;}
-  .name{font-size:2.6rem;}
-  .subtitle{font-size:1.1rem;}
-  .grid{grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));}
-  .grid-item{
-    max-width:100%;
+  body{padding-left:18px; padding-right:18px;}
+  .intro{flex-direction:column; text-align:center; gap:18px;}
+  .hero img{width:160px; height:160px;}
+  .name{font-size:2.4rem;}
+  .subtitle{font-size:1.05rem;}
+  .section-title{margin-top:36px; font-size:1.05rem;}
+  .grid{grid-template-columns:1fr; gap:18px; margin-top:14px;}
+  .grid-item{max-width:100%;}
+  .grid-item h3{margin:8px 0 2px; font-size:1.4rem; position:relative; padding:0 32px 0 14px;}
+  .grid-item h3::after{
+    content:"";
+    position:absolute;
+    right:14px;
+    top:50%;
+    width:8px;
+    height:8px;
+    margin-top:-6px;
+    border-right:2px solid var(--muted);
+    border-bottom:2px solid var(--muted);
+    transform-origin:center;
+    transform:rotate(45deg);
+    transition:transform 0.3s ease;
   }
+  .grid-item.expanded h3::after{
+    transform:rotate(225deg);
+  }
+  .grid-item img{
+    width:75%;
+    display:block;
+    margin:0 auto;
+    aspect-ratio:360/220;
+  }
+  .grid-trigger{cursor:pointer;}
+  .tap-hint{
+    display:block;
+    font-size:0.75rem;
+    color:var(--muted);
+    opacity:0.75;
+    margin-bottom:4px;
+    padding:0 14px;
+  }
+  .grid-item.expanded .tap-hint{
+    display:none;
+  }
+  .grid-desc{
+    max-height:0;
+    opacity:0;
+    overflow:hidden;
+    padding-left:34px;
+    padding-right:14px;
+    transition:max-height 0.35s ease, opacity 0.3s ease;
+  }
+  .grid-item.expanded .grid-desc{
+    max-height:600px;
+    opacity:1;
+    margin-top:6px;
+  }
+  .grid-desc li{padding-bottom:4px;}
+  .numbers{margin:36px 0; gap:16px;}
 }
 
 /* ==========================
@@ -163,14 +216,14 @@ line-height: 1.5;
    Matches iPhone Mini / Framer mobile
    ========================== */
 @media (max-width:390px){
-  html{font-size:14px;} /* global scale-down */
-  .container{padding:20px;}  
-  .hero img{width:150px; height:150px;}
-  .grid{grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));}
+  .container{padding:16px;}
+  body{padding-left:14px; padding-right:14px;}
+  .hero img{width:130px; height:130px;}
+  .grid{grid-template-columns:1fr; gap:16px;}
   .grid-item{
     max-width:100%;
   }
-  .name{font-size:2.2rem;}
-  .section-title{font-size:1.1rem;}
+  .name{font-size:2rem;}
+  .section-title{font-size:1rem;}
   .big{font-size:1.6rem;}
 }
