@@ -83,6 +83,12 @@ body{
   display:block;
 }
 
+/* Inset grid-item style: image scaled to ~70% inside its box */
+.grid-item.inset img{
+  box-sizing:border-box;
+  padding:9.17% 15%;
+}
+
 /* Alternate grid-item style: image fills container, no background */
 .grid-item.fill img{
   object-fit:cover;
